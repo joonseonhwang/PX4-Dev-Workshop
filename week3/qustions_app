@@ -1,9 +1,0 @@
-1. orb_set_interval(sensor_sub_fd, 200);
-왜 sensor_combined 파일의 ORBIOCSETINTERVAL의 속성을 200ms으로 바꾸는지 궁금합니다.
-
-2.memset(&att, 0, sizeof(att));
-왜 메모리 주소의 값을 0 으로 만들어야하는지 궁금합니다.
-
-3.
-
-

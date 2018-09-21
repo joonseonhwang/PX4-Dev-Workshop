@@ -1,0 +1,51 @@
+1. orb_set_interval(sensor_sub_fd, 200);
+왜 sensor_combined 파일의 ORBIOCSETINTERVAL의 속성을 200ms으로 바꾸는지 궁금합니다.
+
+2.memset(&att, 0, sizeof(att));
+왜 메모리 주소의 값을 0 으로 만들어야하는지 궁금합니다.
+
+3.poll 함수의 정의에 대해 찾아보니 너무 복잡하여, 간단하게 요약해주실 수 있는지 궁금합니다.
+
+
+px4_simple_app 분석
+int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_combined));
+sensor_combined 파일을 오픈한다. sensor_sub_fd는 sensor_combined 파일
+sensor_combined 파일은 px4의 /obj 디렉토리에 있다.
+orb_set_interval(sensor_sub_fd, 200);
+sensor_combined 파일의 ORBIOCSETINTERVAL의 속성을 200ms으로 바꾼다.//Q:왜 sensor_combined 파일의 ORBIOCSETINTERVAL의 속성을 200ms으로 바꾸는지 궁금합니다.
+
+struct vehicle_attitude_s att;
+memset(&att, 0, sizeof(att));
+orb_advert_t att_pub = orb_advertise(ORB_ID(vehicle_attitude), &att);
+vehicle_attitude_s 구조체 선언. uORB의 vehicle_attitude 메시지를 저장하는 타입.
+memset() 해당 메모리 주소의 값을 ‘0’ 으로 바꾸는 함수. 메모리 세터!//Q: 왜 메모리 주소의 값을 0 으로 만들어야하는지 궁금합니다.
+
+orb_advertise: vehicle_attitude 토픽을 발행(publish)하기 위한 초기화
+	px4_pollfd_struct_t fds[] = {
+		{ .fd = sensor_sub_fd,   .events = POLLIN },
+		/* there could be more file descriptors here, in the form like:
+		 * { .fd = other_sub_fd,   .events = POLLIN },
+		 */
+	};
+poll 구조체에 sensor_sub_fd 파일 디스크립터와 POLLIN(입력) 이벤트를 정의. 이후 poll 함수 쓸 때 사용//Q: poll 함수의 정의에 대해 찾아보니 너무 복잡하여, 간단하게 요약해주실 수 있는지 궁금합니다.
+여러개의 파일 디스크립터를 지정할 수 있음.
+int poll_ret = px4_poll(fds, 1, 1000);
+fds 구조체에 정의된 파일 디스크립터로 부터 이벤트가 발생하는지 체크.
+px4_poll이 타입아웃 발생하면, 0을 리턴, 에러면 -1,
+여러개의 파일 디스크립터를 지정할 수 있음.
+	struct sensor_combined_s raw;
+	/* copy sensors raw data into local buffer */
+	orb_copy(ORB_ID(sensor_combined), sensor_sub_fd, &raw);
+	PX4_INFO("Accelerometer:\t%8.4f\t%8.4f\t%8.4f",
+	(double)raw.accelerometer_m_s2[0],
+	(double)raw.accelerometer_m_s2[1],
+	(double)raw.accelerometer_m_s2[2]);
+sensor_combined 메시지를 저장 할 수 있는 구조체 선언
+sensor_sub_fd 로 부터 sensor_combined 토픽을 읽어, raw에 저장.
+accelerometer_m_s2[]: average value acceleration measured
+att.q[0] = raw.accelerometer_m_s2[0];
+att.q[1] = raw.accelerometer_m_s2[1];
+att.q[2] = raw.accelerometer_m_s2[2];
+
+orb_publish(ORB_ID(vehicle_attitude), att_pub, &att);
+vehicle_attitude 토픽에 raw(측정된 가속도 평균값)을 발행(publish)
